@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+grpcio
+grpcio-tools
+langgraph
+langchain-openai
+pydantic
+python-dotenv
