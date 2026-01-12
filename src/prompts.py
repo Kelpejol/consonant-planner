@@ -15,7 +15,7 @@ rather than "what steps should I run?"
 """
 
 from typing import List, Dict, Any
-from src.models import (
+from models import (
     SubGoal, Unknown, AgentCapability, PlanStep, 
     ResultAnalysis, Strategy, PlannerContext
 )

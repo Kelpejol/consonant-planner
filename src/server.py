@@ -24,13 +24,13 @@ from datetime import datetime
 
 try:
     import grpc
-    from src.proto.v1 import planner_pb2, planner_pb2_grpc
+    from proto.v1 import planner_pb2, planner_pb2_grpc
 except ImportError:
     print("ERROR: gRPC packages not installed. Run: pip install grpcio grpcio-tools")
     sys.exit(1)
 
-from src.agent import ReflectivePlannerAgent, PlannerStateDict
-from src.models import PlanStep, PlannerContext
+from agent import ReflectivePlannerAgent, PlannerStateDict
+from models import PlanStep, PlannerContext
 
 
 # Configure structured logging
