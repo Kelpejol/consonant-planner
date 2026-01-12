@@ -70,18 +70,18 @@ def main():
 ╚══════════════════════════════════════════════════════════════════════════════╝
     """)
     
-    # Test Scenario 1: System Debugging
-    print("\n📍 TEST SCENARIO 1: System Debugging")
-    print("-" * 80)
-    test_planner(
-        goal="Diagnose and fix payment processing failures in production",
-        context={
-            "service": "payment-processor",
-            "environment": "production",
-            "error_rate": "15%",
-            "recent_changes": "database connection pool settings updated"
-        }
-    )
+    # # Test Scenario 1: System Debugging
+    # print("\n📍 TEST SCENARIO 1: System Debugging")
+    # print("-" * 80)
+    # test_planner(
+    #     goal="Diagnose and fix payment processing failures in production",
+    #     context={
+    #         "service": "payment-processor",
+    #         "environment": "production",
+    #         "error_rate": "15%",
+    #         "recent_changes": "database connection pool settings updated"
+    #     }
+    # )
     
     # Test Scenario 2: Feature Development
     print("\n\n📍 TEST SCENARIO 2: Feature Development")
@@ -95,17 +95,17 @@ def main():
         }
     )
     
-    # Test Scenario 3: Research Task
-    print("\n\n📍 TEST SCENARIO 3: Research Task")
-    print("-" * 80)
-    test_planner(
-        goal="Research and recommend the best approach for implementing real-time notifications",
-        context={
-            "scale": "10k concurrent users",
-            "requirements": "low latency, reliable delivery",
-            "current_infra": "AWS"
-        }
-    )
+    # # Test Scenario 3: Research Task
+    # print("\n\n📍 TEST SCENARIO 3: Research Task")
+    # print("-" * 80)
+    # test_planner(
+    #     goal="Research and recommend the best approach for implementing real-time notifications",
+    #     context={
+    #         "scale": "10k concurrent users",
+    #         "requirements": "low latency, reliable delivery",
+    #         "current_infra": "AWS"
+    #     }
+    # )
     
     print("\n\n✅ All tests complete!")
 

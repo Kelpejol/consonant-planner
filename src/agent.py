@@ -1,19 +1,12 @@
 """
-Terra Reflective Planner Agent
+Terra Reflective Planner Agent - FIXED VERSION
 
 This module implements the core planning agent using LangGraph's state machine.
 
-The planner operates as a continuous cognitive loop with distinct phases:
-1. UNDERSTAND - Interpret and refine the goal
-2. DECOMPOSE - Break into logical sub-goals
-3. MATCH - Find agent capabilities to address unknowns
-4. PLAN - Structure execution (parallel/sequential)
-5. AWAIT - Wait for results (in production, triggers agent execution)
-6. ANALYZE - Interpret results and update context
-7. DECIDE - Continue, branch, or replan
-
-This is a THINKING machine, not an executor. It reasons about what should be
-done and why, maintaining epistemic humility and learning from experience.
+FIXES:
+1. Corrected routing logic to match graph edges
+2. Fixed LLM response parsing for Gemini's list format
+3. Added missing context_dict initialization in decompose_goal
 """
 
 import os
@@ -98,7 +91,7 @@ class ReflectivePlannerAgent:
     - Parallel execution planning
     - Unknown-driven reasoning
     
-    The agent uses Claude Sonnet 4.5 via langchain-anthropic for LLM reasoning.
+    The agent uses Google Gemini via langchain-google-genai for LLM reasoning.
     """
     
     def __init__(
@@ -147,17 +140,9 @@ class ReflectivePlannerAgent:
     def understand_goal(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         UNDERSTAND phase: Interpret and refine the goal.
-        
-        This phase deeply analyzes the goal to identify:
-        - Real objectives (vs stated symptoms)
-        - Success criteria
-        - Constraints
-        - Initial unknowns
-        
-        Returns updated state with refined understanding.
         """
         logger.info(f"[{state['workflow_id']}] UNDERSTAND phase: Analyzing goal")
-        print(f"DEBUG: Entering UNDERSTAND phase. llm={self.llm is not None}, mock_mode={self.mock_mode}")
+        
         context_dict = state.get('context', {})
         
         # Create prompt
@@ -206,7 +191,7 @@ class ReflectivePlannerAgent:
                     'context': updated_context,
                     'current_phase': PlanningPhase.DECOMPOSE.value,
                     'reasoning_trace': [f"UNDERSTAND: {result.get('confidence', 'unknown')} confidence in goal clarity"],
-                    'llm_messages': [AIMessage(content=response.content)]
+                    'llm_messages': [AIMessage(content=str(response.content))]
                 }
                 
             except Exception as e:
@@ -219,12 +204,11 @@ class ReflectivePlannerAgent:
     def decompose_goal(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         DECOMPOSE phase: Break goal into logical sub-goals.
-        
-        Identifies what must be TRUE (not what steps to run) for the goal
-        to be satisfied. Sub-goals are logical conditions, not procedures.
         """
         logger.info(f"[{state['workflow_id']}] DECOMPOSE phase: Identifying sub-goals")
-        print(f"DEBUG: Entering DECOMPOSE phase. mock_mode={self.mock_mode}")
+        
+        # FIX: Initialize context_dict
+        context_dict = state.get('context', {})
         known_facts = context_dict.get('known_facts', {})
         refined_goal = known_facts.get('refined_goal', state['goal'])
         objectives = known_facts.get('objectives', [state['goal']])
@@ -300,7 +284,7 @@ class ReflectivePlannerAgent:
                     'context': updated_context,
                     'current_phase': PlanningPhase.MATCH.value,
                     'reasoning_trace': [f"DECOMPOSE: Identified {len(sub_goals)} sub-goals with {len(all_unknowns)} unknowns"],
-                    'llm_messages': [AIMessage(content=response.content)]
+                    'llm_messages': [AIMessage(content=str(response.content))]
                 }
                 
             except Exception as e:
@@ -312,12 +296,10 @@ class ReflectivePlannerAgent:
     def match_capabilities(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         MATCH phase: Match unknowns to agent capabilities.
-        
-        Considers semantic fit, historical behavior, and trust levels
-        to determine which agents can best address each unknown.
         """
         logger.info(f"[{state['workflow_id']}] MATCH phase: Matching agents to unknowns")
-        print(f"DEBUG: Entering MATCH phase. context keys: {list(state.get('context', {}).keys())}")
+        
+        context_dict = state.get('context', {})
         
         # Get active strategy
         strategy_data = context_dict.get('active_strategy', {})
@@ -332,7 +314,7 @@ class ReflectivePlannerAgent:
         unknowns_data = context_dict.get('remaining_unknowns', [])
         unknowns = [Unknown(**u) if isinstance(u, dict) else u for u in unknowns_data]
         
-        # Get agent capabilities (empty for now, will be populated in production)
+        # Get agent capabilities
         agent_capabilities = context_dict.get('agent_capabilities', {})
         agent_history = context_dict.get('agent_history', {})
         
@@ -363,7 +345,7 @@ class ReflectivePlannerAgent:
                     'context': updated_context,
                     'current_phase': PlanningPhase.PLAN.value,
                     'reasoning_trace': [f"MATCH: Created {len(result.get('matches', []))} capability matches"],
-                    'llm_messages': [AIMessage(content=response.content)]
+                    'llm_messages': [AIMessage(content=str(response.content))]
                 }
                 
             except Exception as e:
@@ -375,9 +357,6 @@ class ReflectivePlannerAgent:
     def create_plan(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         PLAN phase: Structure concrete execution steps.
-        
-        Generates actionable steps with clear dependencies, execution modes,
-        and expected outcomes based on all prior reasoning.
         """
         logger.info(f"[{state['workflow_id']}] PLAN phase: Structuring execution")
         
@@ -437,7 +416,7 @@ class ReflectivePlannerAgent:
                     'current_phase': PlanningPhase.AWAIT.value,
                     'iteration_count': new_iteration,
                     'reasoning_trace': [f"PLAN: Generated {len(plan_steps)} execution steps"],
-                    'llm_messages': [AIMessage(content=response.content)]
+                    'llm_messages': [AIMessage(content=str(response.content))]
                 }
                 
             except Exception as e:
@@ -449,14 +428,8 @@ class ReflectivePlannerAgent:
     def await_results(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         AWAIT phase: Wait for agent execution results.
-        
-        In production, this would trigger actual agent execution and wait.
-        For this implementation, we simulate results for demonstration.
         """
         logger.info(f"[{state['workflow_id']}] AWAIT phase: Simulating agent execution")
-        
-        # In production: trigger agent execution via orchestrator
-        # For now: simulate results
         
         current_plan = state.get('current_plan', [])
         
@@ -482,9 +455,6 @@ class ReflectivePlannerAgent:
     def analyze_results(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         ANALYZE phase: Interpret results and update context.
-        
-        This is where intelligence shows: reasoning about what results
-        mean for unknowns, assumptions, and strategy viability.
         """
         logger.info(f"[{state['workflow_id']}] ANALYZE phase: Interpreting results")
         
@@ -522,7 +492,6 @@ class ReflectivePlannerAgent:
                 
                 # Update unknowns
                 resolved_ids = [u['id'] for u in result.get('unknowns_resolved', [])]
-                still_open_ids = result.get('unknowns_still_open', [])
                 
                 # Track strategy health
                 strategic_assessment = result.get('strategic_assessment', {})
@@ -541,7 +510,7 @@ class ReflectivePlannerAgent:
                     'context': updated_context,
                     'current_phase': PlanningPhase.DECIDE.value,
                     'reasoning_trace': [f"ANALYZE: Resolved {len(resolved_ids)} unknowns, strategy health: {strategy.health.value}"],
-                    'llm_messages': [AIMessage(content=response.content)]
+                    'llm_messages': [AIMessage(content=str(response.content))]
                 }
                 
             except Exception as e:
@@ -553,12 +522,6 @@ class ReflectivePlannerAgent:
     def decide_next_move(self, state: PlannerStateDict) -> Dict[str, Any]:
         """
         DECIDE phase: Determine whether to continue, branch, or replan.
-        
-        This is pure strategic reasoning based on:
-        - Strategy health
-        - Remaining unknowns
-        - Confidence trends
-        - Result quality
         """
         logger.info(f"[{state['workflow_id']}] DECIDE phase: Strategic decision")
         
@@ -627,32 +590,23 @@ class ReflectivePlannerAgent:
                         'current_phase': PlanningPhase.COMPLETE.value,
                         'last_decision': decision,
                         'reasoning_trace': [f"DECIDE: {decision} - {result.get('reasoning', '')}"],
-                        'llm_messages': [AIMessage(content=response.content)]
+                        'llm_messages': [AIMessage(content=str(response.content))]
                     }
                 elif decision == 'replan' or goal_status.get('impossible'):
                     return {
                         'goal_impossible': goal_status.get('impossible', False),
                         'final_reasoning': result.get('reasoning', 'Replanning required'),
-                        'current_phase': PlanningPhase.DECOMPOSE.value,  # Start over with new framing
+                        'current_phase': PlanningPhase.DECOMPOSE.value,
                         'last_decision': decision,
                         'reasoning_trace': [f"DECIDE: {decision} - replanning"],
-                        'llm_messages': [AIMessage(content=response.content)]
+                        'llm_messages': [AIMessage(content=str(response.content))]
                     }
-                elif decision == 'branch':
-                    # For now, treat branch as continue with note
-                    logger.info("Branch decision - continuing for simplicity")
+                else:  # continue or branch
                     return {
                         'current_phase': PlanningPhase.DECOMPOSE.value,
                         'last_decision': decision,
-                        'reasoning_trace': [f"DECIDE: {decision} - branching strategy"],
-                        'llm_messages': [AIMessage(content=response.content)]
-                    }
-                else:  # continue
-                    return {
-                        'current_phase': PlanningPhase.DECOMPOSE.value,  # Loop back
-                        'last_decision': decision,
                         'reasoning_trace': [f"DECIDE: {decision} - continuing"],
-                        'llm_messages': [AIMessage(content=response.content)]
+                        'llm_messages': [AIMessage(content=str(response.content))]
                     }
                 
             except Exception as e:
@@ -662,30 +616,41 @@ class ReflectivePlannerAgent:
             return self._mock_decide(state)
     
     # ========================================================================
-    # ROUTING FUNCTIONS
+    # ROUTING FUNCTIONS - FIXED
     # ========================================================================
     
     def route_from_phase(self, state: PlannerStateDict) -> str:
         """
         Route to next phase based on current phase in state.
         
-        This implements the state machine transitions.
+        FIX: Returns the actual phase name that exists in the graph,
+        not the enum value that might not match.
         """
-        if state.get('goal_impossible'):
+        if state.get('goal_impossible') or state.get('goal_satisfied'):
             return "end"
             
         phase = state.get('current_phase', PlanningPhase.UNDERSTAND.value)
         
         if phase == PlanningPhase.COMPLETE.value:
             return "end"
-            
-        return phase
+        
+        # Map phase enum values to node names
+        phase_to_node = {
+            PlanningPhase.UNDERSTAND.value: "understand",
+            PlanningPhase.DECOMPOSE.value: "decompose",
+            PlanningPhase.MATCH.value: "match",
+            PlanningPhase.PLAN.value: "plan",
+            PlanningPhase.AWAIT.value: "await",
+            PlanningPhase.ANALYZE.value: "analyze",
+            PlanningPhase.DECIDE.value: "decide",
+            PlanningPhase.COMPLETE.value: "end"
+        }
+        
+        return phase_to_node.get(phase, "end")
     
     def route_from_decide(self, state: PlannerStateDict) -> str:
         """
         Route after DECIDE phase based on decision.
-        
-        Can loop back to decompose, or end if complete.
         """
         if state.get('goal_satisfied') or state.get('goal_impossible'):
             return "end"
@@ -698,22 +663,18 @@ class ReflectivePlannerAgent:
         if state['iteration_count'] >= state['max_iterations']:
             return "end"
         
-        # Continue looping
+        # Continue looping - go back to understand for new iteration
         return "understand"
     
     # ========================================================================
-    # GRAPH CONSTRUCTION
+    # GRAPH CONSTRUCTION - FIXED
     # ========================================================================
     
     def _build_graph(self) -> StateGraph:
         """
         Build the LangGraph state machine for the planning loop.
         
-        Graph structure:
-        START → understand → decompose → match → plan → await → analyze → decide
-                    ↑                                                        ↓
-                    └────────────────────────────────────────────────────────┘
-                                    (loop until complete)
+        FIX: Simplified conditional edges to only use valid destinations.
         """
         workflow = StateGraph(PlannerStateDict)
         
@@ -729,65 +690,13 @@ class ReflectivePlannerAgent:
         # Set entry point
         workflow.set_entry_point("understand")
         
-        # Add edges with routing (using conditional edges for all to ensure phase compliance)
-        workflow.add_conditional_edges(
-            "understand",
-            self.route_from_phase,
-            {
-                "decompose": "decompose",
-                "decide": "decide",
-                "end": END
-            }
-        )
-        
-        workflow.add_conditional_edges(
-            "decompose",
-            self.route_from_phase,
-            {
-                "match": "match",
-                "decide": "decide",
-                "end": END
-            }
-        )
-        
-        workflow.add_conditional_edges(
-            "match",
-            self.route_from_phase,
-            {
-                "plan": "plan",
-                "decide": "decide",
-                "end": END
-            }
-        )
-        
-        workflow.add_conditional_edges(
-            "plan",
-            self.route_from_phase,
-            {
-                "await": "await",
-                "decide": "decide",
-                "end": END
-            }
-        )
-        
-        workflow.add_conditional_edges(
-            "await",
-            self.route_from_phase,
-            {
-                "analyze": "analyze",
-                "decide": "decide",
-                "end": END
-            }
-        )
-        
-        workflow.add_conditional_edges(
-            "analyze",
-            self.route_from_phase,
-            {
-                "decide": "decide",
-                "end": END
-            }
-        )
+        # Simple linear edges for normal flow
+        workflow.add_edge("understand", "decompose")
+        workflow.add_edge("decompose", "match")
+        workflow.add_edge("match", "plan")
+        workflow.add_edge("plan", "await")
+        workflow.add_edge("await", "analyze")
+        workflow.add_edge("analyze", "decide")
         
         # Conditional routing from decide (loop or end)
         workflow.add_conditional_edges(
@@ -802,26 +711,35 @@ class ReflectivePlannerAgent:
         return workflow.compile()
     
     # ========================================================================
-    # UTILITY METHODS
+    # UTILITY METHODS - FIXED
     # ========================================================================
     
-    def _parse_llm_json(self, content: str) -> Dict[str, Any]:
+    def _parse_llm_json(self, content: Any) -> Dict[str, Any]:
         """
-        Parse JSON from LLM response, handling markdown code blocks.
+        Parse JSON from LLM response, handling markdown code blocks and Gemini's list format.
         
-        LLMs often wrap JSON in ```json ... ``` blocks.
+        FIX: Properly handles Gemini's list response format.
         """
-        # Handle list content (sometimes returned by Gemini)
+        # Handle list content (Gemini often returns list of content parts)
         if isinstance(content, list):
-            # Join text parts if it's a list of dicts or strings
             text_parts = []
             for part in content:
-                if isinstance(part, dict) and "text" in part:
-                    text_parts.append(part["text"])
+                if isinstance(part, dict):
+                    # Gemini content parts have 'text' field
+                    if "text" in part:
+                        text_parts.append(part["text"])
+                    # Also check for 'parts' field
+                    elif "parts" in part:
+                        for subpart in part["parts"]:
+                            if isinstance(subpart, dict) and "text" in subpart:
+                                text_parts.append(subpart["text"])
+                            elif isinstance(subpart, str):
+                                text_parts.append(subpart)
                 elif isinstance(part, str):
                     text_parts.append(part)
             content = "".join(text_parts)
             
+        # Ensure content is a string
         if not isinstance(content, str):
             content = str(content)
             
@@ -839,7 +757,7 @@ class ReflectivePlannerAgent:
         try:
             return json.loads(content)
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM JSON: {e}\nContent: {content[:200]}")
+            logger.error(f"Failed to parse LLM JSON: {e}\nContent: {content[:500]}")
             raise
     
     def _handle_phase_error(
@@ -857,11 +775,7 @@ class ReflectivePlannerAgent:
         }
     
     def _simulate_agent_result(self, step: PlanStep) -> str:
-        """
-        Simulate agent execution result.
-        
-        In production, this would trigger actual agent execution.
-        """
+        """Simulate agent execution result."""
         return f"Simulated result for {step.description}: Analysis suggests {step.expected_outcome}"
     
     # ========================================================================
