@@ -1,8 +1,30 @@
-fastapi
-uvicorn
-grpcio
-grpcio-tools
+# Core gRPC dependencies
+grpcio==1.62.2
+grpcio-tools==1.62.2
+
+# LangGraph and LangChain for agent orchestration
 langgraph
-langchain-openai
-pydantic
-python-dotenv
+langchain-core
+langchain-google-genai
+
+# Data validation and serialization
+pydantic==2.10.5
+pydantic-settings==2.7.1
+
+# Environment management
+python-dotenv==1.0.1
+
+# FastAPI for optional REST interface
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# Async and concurrency
+anyio==4.8.0
+
+# Logging and observability
+structlog==25.1.0
+
+# Testing (dev dependencies)
+pytest==8.3.4
+pytest-asyncio==0.25.2
+pytest-grpc==0.8.0
